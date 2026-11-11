@@ -1,0 +1,73 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3602a3adcda692e488e149d1a00c8e46, type: 3}
+  m_Name: UiLayoutRules
+  m_EditorClassIdentifier: 
+  designWidth: 1600
+  buttonFontSize: 38
+  buttonPaddingXRatio: 1.4
+  buttonPaddingYRatio: 0.95
+  buttonGapRatio: 0.5
+  buttonMinWidthRatio: 6
+  buttonMaxRowWidthRatio: 0.85
+  buttonLineHeightRatio: 1.5
+  buttonFullscreenBottom: 96
+  buttonCornerRadius: 8
+  minLowerBandHeight: 200
+  titleLineGap: 8
+  titleLineHeightRatio: 1.5
+  titleSideMargin: 32
+  titleCornerRadius: 8
+  teamNameFontRatio: 0.7
+  photoColumnRatio: 0.45
+  photoMaxHeightRatio: 0.65
+  photoColumnGap: 32
+  photoOverlays:
+  - backgroundFileName: SPECTRUM_Cunard_News_Unity_Background_V3.png
+    backgroundSize: {x: 1920, y: 1080}
+    photoRect:
+      serializedVersion: 2
+      x: 64
+      y: 350
+      width: 960
+      height: 540
+  edgeInset: 32
+  defaultHudPosition: bottom-left
+  hudFontName: monospace
+  hudInset: 16
+  hudGap: 8
+  hudFontSize: 20
+  hudLineHeight: 28
+  hudPaddingX: 16
+  hudPaddingY: 8
+  hudCornerRadius: 8
+  volumeWidth: 100
+  volumeBandWidth: 80
+  volumePaddingY: 6
+  volumeBandPaddingY: 4
+  volumeFontSize: 16
+  volumeBarHeight: 20
+  volumeBarFontSize: 13
+  volumeGap: 4
+  volumeCornerRadius: 8
+  volumeBarBorder: 2
+  volumeReservedWidth: 150
+  videoControlFontSize: 12
+  videoControlHeight: 32
+  videoControlPaddingX: 16
+  videoControlGap: 8
+  videoControlCornerRadius: 4
+  overlayControlBottom: 32
+  stageControlBottom: 16
+  fontAliases:
+  - jsonName: sans-serif
+    fontAsset: Arial

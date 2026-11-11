@@ -1,0 +1,286 @@
+# Changes for Ren — Unity offline app (build 3 handover)
+
+This document lists everything that has changed in the Base44 authoring app
+**since the last handover** (`CHANGES_FOR_REN_Unity_v2.md`, format `0.2.0`).
+Ren has the Unity offline Player/Operator that consumes the exported game
+package (`<Game>.json` + `media/`).
+
+The export format version is still `0.2.0` — no breaking format change.
+Each item below marks whether it is a **BIG** or **SMALL** task for Unity, and
+whether it affects the export contract (Ren must read/honour it) or is
+web-only (no Unity work).
+
+> Legend: **BIG** = new subsystem or significant logic. **SMALL** = a field
+> read or a minor behaviour tweak.
+
+---
+
+## 0. Export corrections — please read first
+
+Two fields that were **documented in v2 but were never actually written to
+the export JSON** have now been fixed in the exporter:
+
+### 0a. `starting_score` — was missing, now exported — SMALL
+
+v2 §1 documented `Game.starting_score` (the score the player starts with).
+**It was not being exported.** The exporter now includes it. If you already
+hard-coded a fallback of 0, that is fine — old exports without the field
+default to 0. New exports will carry the real value.
+
+### 0b. End-game video fit modes — were missing, now exported — SMALL
+
+`end_game_video_low_fit_mode`, `end_game_video_medium_fit_mode`, and
+`end_game_video_high_fit_mode` were in the schema but not in the export.
+They are now exported (see §1 below). Old exports without them default to
+`"contain"`.
+
+---
+
+## 1. Video fit modes (contain / cover) — SMALL (per context)
+
+Every video-playing context in the game now has an explicit **fit mode**
+field controlling how the video fills its playback area:
+
+| Value | Meaning |
+| --- | --- |
+| `"contain"` (default) | Fit the whole video inside the area. Black bars (letterbox/pillarbox) fill the empty space. No cropping. |
+| `"cover"` | Fill the entire area. The video is scaled to cover and the overflow is cropped. No black bars. |
+
+This is the CSS `object-fit: contain` / `object-fit: cover` equivalent.
+
+### Where the fields live
+
+**Stage background video** (on `Stage`):
+- `background_video_fit_mode` — `"contain"` | `"cover"`, default `"contain"`.
+  Applies to the stage's main background video on both `fullscreen` and
+  `video_top` layouts (on `video_top` it governs the top 16:9 window).
+
+**Stage lower-area background video** (on `Stage`, `video_top` layout only):
+- `lower_background_video_fit_mode` — `"contain"` | `"cover"`, default
+  `"contain"`. Governs the lower-area looping background video.
+
+**Trigger media video** (on `Trigger`):
+- `media_video_fit_mode` — `"contain"` | `"cover"`, default `"contain"`.
+  Applies when this trigger's `media_type` is `video`.
+
+**Trigger incorrect-code media video** (on `Trigger`):
+- `incorrect_media_video_fit_mode` — `"contain"` | `"cover"`, default
+  `"contain"`. Applies to the video played on an incorrect code entry.
+
+**End-game videos** (on `game`):
+- `end_game_video_low_fit_mode` — `"contain"` | `"cover"`, default `"contain"`.
+- `end_game_video_medium_fit_mode` — same.
+- `end_game_video_high_fit_mode` — same.
+
+### Behaviour requirements for Unity
+
+1. When the fit mode is `"contain"`, letterbox the video centred within the
+   playback area (do not crop).
+2. When the fit mode is `"cover"`, scale the video to fill the entire area
+   and crop the overflow (centred crop). No black bars.
+3. The playback area is the same area the video already plays in —
+   `fullscreen` = whole screen, `top_window` = the top 16:9 window on
+   `video_top` stages. The fit mode only changes how the video fills that
+   area, not where the area is.
+4. Old exports without these fields default to `"contain"` (the previous
+   behaviour — videos were always shown uncropped).
+
+**SMALL** per context — it is a field read plus a contain/cover switch on the
+video render path. If Unity already has an aspect-ratio fitter, this is a
+small addition.
+
+---
+
+## 2. Lower-area background video controls — fully expanded — SMALL
+
+v2 §6 described the lower-area background video controls as "same pattern
+with `lower_background_` prefix." The full flag set is now explicit in the
+schema and exported on each stage. On `Stage` (for `video_top` layouts):
+
+- `lower_background_video_show_controls` (bool, default false) — master
+  switch.
+- `lower_background_video_allow_play_pause` (bool, default true).
+- `lower_background_video_allow_replay` (bool, default true).
+- `lower_background_video_allow_skip` (bool, default true) — **only appears
+  when `lower_background_video_loop` is false.** SKIP runs the stage's
+  `background_video_end_action` (the same end-action field used by the
+  top/main background video — there is no separate lower-area end action).
+- `lower_background_video_allow_back` (bool, default true) — **only appears
+  when `lower_background_video_loop` is false.** BACK returns to the
+  previous stage.
+- `lower_background_video_volume` (0–100, default 50).
+- `lower_background_video_loop` (bool, default true).
+
+### Behaviour requirements for Unity
+
+1. Render the control button row over the lower-area background video when
+   `lower_background_video_show_controls` is true.
+2. Show/hide individual buttons per the `allow_*` flags.
+3. SKIP and BACK buttons only appear when the video does NOT loop
+   (`lower_background_video_loop === false`).
+4. SKIP triggers `background_video_end_action` (the stage-level end action
+   already documented in the first handover — `next_stage`,
+   `goto_stage_number`, `go_back`, `repeat_media`, `show_scoreboard`, or
+   `stop_audio`).
+5. BACK navigates to the previous stage in the history.
+6. Apply game-level `video_controls_*` styling as with all other control
+   button contexts.
+
+**SMALL** — same control-button UI as the other two contexts, just a
+different video target and the SKIP/BACK-when-not-looping rule.
+
+---
+
+## 3. `show_photo_caption` as a general Stage field — SMALL
+
+v2 §12 mentioned `show_photo_caption` only in the Newsletter V3 photo
+placement context. It is a **general** field on every `Stage` and works
+on ANY stage where `show_team_photo` is true, not just the newsletter
+background:
+
+- `Stage.show_photo_caption` (bool, default false) — when true, show a
+  dark translucent caption bar at the **bottom edge of the team photo**
+  with:
+  - **Left side:** the team name.
+  - **Right side:** the elapsed timer time and the current score.
+- The caption bar sits **inside** the photo's bottom edge, not below it.
+- Text should shrink to fit without wrapping (single line).
+
+### Behaviour requirements for Unity
+
+1. When `show_team_photo` is true AND `show_photo_caption` is true, render
+   the caption bar over the team photo's bottom edge.
+2. The Newsletter V3 placement (v2 §12 / first handover) still applies its
+   own caption rules — `show_photo_caption` controls the caption there too.
+3. On non-newsletter stages with `show_team_photo` and `show_photo_caption`,
+   render the caption bar at the bottom of the photo using the same layout
+   (team name left, time + score right).
+
+**SMALL** — a boolean read plus a caption bar render at the photo bottom.
+
+---
+
+## 4. Per-stage button position offset — SMALL
+
+A stage can now nudge its trigger-button group by raw pixel offsets, for
+stages where the buttons need to sit somewhere other than the default
+bottom-centred position (e.g. pinned to the very bottom edge).
+
+Two new fields on `Stage`:
+
+- `button_offset_x` (int, default 0) — horizontal pixel offset. Positive
+  moves the button group **right**, negative moves **left**. 0 = default
+  centred position.
+- `button_offset_y` (int, default 0) — vertical pixel offset. Positive
+  moves the button group **up** from the default bottom position, negative
+  moves **down** toward or past the bottom edge. 0 = default position
+  (which includes the standard bottom padding, ~96px from the bottom edge
+  on fullscreen stages).
+
+### Behaviour requirements for Unity
+
+1. Apply both offsets to the button group's position as a translate:
+   `translate(button_offset_x px, -button_offset_y px)` relative to the
+   default bottom-centred anchor. (Y is negated because positive Y means
+   "up" in the authoring tool, but screen-space Y increases downward.)
+2. The offsets are **additive** to the existing layout — they shift the
+   group from wherever it would normally sit (bottom-centred on
+   `fullscreen`, bottom-centred in the lower area on `video_top`).
+3. Offsets are per-stage; stages without the fields (or 0) render at the
+   default position. Old exports without the fields default to 0.
+4. The offsets do NOT change button size — that is still governed by
+   `button_scale` (v2 §12b). The two are independent.
+5. The creator sets these by trial and error in the Player, so large or
+   negative values are valid and should be honoured as-is (the buttons
+   may end up off-screen if the creator overdoes it — that is their
+   choice).
+
+**SMALL** — a translate on the button group anchored at the existing
+bottom-centre position.
+
+---
+
+## 5. Progress indicator — implemented (web-only) — no new export field
+
+`Game.progress_indicator_visible` was documented in v2 §16 and was already
+in the export. The web Player now renders it: a thin blue progress bar at
+the very top of the screen with a "Stage X of Y" label, reflecting how far
+through the game the player has progressed.
+
+**No new export field.** Unity should already be reading
+`progress_indicator_visible` from v2. The rendering spec is:
+- A full-width bar at the top of the screen (z-order above stage content).
+- Width = `(currentStageIndex + 1) / totalStages * 100`%.
+- A "Stage X of Y" text label centred below the bar.
+- Visible only when `progress_indicator_visible` is true.
+
+**SMALL** — if not already implemented, render the bar + label.
+
+---
+
+## 6. Does NOT affect Unity (no action needed)
+
+These changes are web-only (creator interface, web preview rendering, or
+web Player rendering) and do not change the export contract:
+
+- **StageEditor tab reorganisation** — the creator's stage editor is now
+  organised into three tabs: Background, Buttons / Audio, Title / Text.
+  Creator-only UI; nothing exported.
+- **StageEditor tab styling** — high-contrast amber active tabs, slate
+  inactive tabs. Creator-only UI.
+- **Background tab 3-column layout** — Timer / Score / Transition controls
+  moved to a third column. Creator-only UI.
+- **Creator container max-width** — increased to 1700px. Creator-only UI.
+- **MediaUrlInput truncated filenames** — the creator shows truncated
+  filenames instead of full URLs in media input fields. Creator-only UI.
+- **NewsletterPhotoBackground component** — web-renderer only; the
+  newsletter V3 photo placement contract (v2 §12) is unchanged.
+- **TeamPhotoDisplay max-height handling** — web-renderer only; prevents
+  the photo from rendering off-screen. No export change.
+- **ScreenFrame white border on previews** — web preview only; nothing
+  exported.
+- **2-column grid layouts in StageEditor** — creator-only UI.
+- **SignedNumberInput for negative values** — creator-only UI component.
+- **Volume control UI standardisation** — creator-only UI (the exported
+  `show_volume_controls` / `volume_controls_position` fields are unchanged
+  from v2).
+
+---
+
+## Summary table
+
+| # | Feature | Task size | Affects export? |
+| --- | --- | --- | --- |
+| 0a | `starting_score` export fix | SMALL | Yes (was missing) |
+| 0b | End-game video fit modes export fix | SMALL | Yes (were missing) |
+| 1 | Video fit modes (contain/cover) across all contexts | SMALL | Yes |
+| 2 | Lower-area background video controls (full flag set) | SMALL | Yes |
+| 3 | `show_photo_caption` as a general field | SMALL | Yes |
+| 4 | Per-stage button position offset (`button_offset_x/y`) | SMALL | Yes |
+| 5 | Progress indicator rendering spec | SMALL | No (field already exported) |
+| 6 | Creator UI / web-renderer changes | — | No |
+
+---
+
+## Verification checklist for Ren
+
+1. `starting_score` is present in the exported `game` object and applied
+   on game start (old exports without it default to 0).
+2. `background_video_fit_mode` / `lower_background_video_fit_mode` /
+   `media_video_fit_mode` / `incorrect_media_video_fit_mode` /
+   `end_game_video_*_fit_mode` are all read and honoured:
+   `"contain"` = letterbox with black bars, `"cover"` = fill and crop.
+3. Lower-area background video controls appear when
+   `lower_background_video_show_controls` is true; SKIP and BACK only
+   appear when `lower_background_video_loop` is false; SKIP runs
+   `background_video_end_action`; BACK goes to the previous stage.
+4. `show_photo_caption` renders the caption bar (team name left, time +
+   score right) at the bottom of the team photo on any stage with
+   `show_team_photo` and `show_photo_caption` both true.
+5. `button_offset_x` / `button_offset_y` shift the button group by raw
+   pixels from the default bottom-centred position (positive X = right,
+   positive Y = up). Old exports default to 0 (no shift).
+6. `progress_indicator_visible` renders the top progress bar + "Stage X
+   of Y" label when true.
+7. Old exports without the new fit-mode fields keep working (default
+   `"contain"` — the previous uncropped behaviour).

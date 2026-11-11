@@ -1,0 +1,148 @@
+CHANGES FOR REN - UNITY OFFLINE APP (BUILD 4 HANDOVER)
+=====================================================
+
+This document lists everything that has changed in the Base44 authoring app
+since the last handover (CHANGES_FOR_REN_Unity_v3.md, format 0.2.0).
+Ren has the Unity offline Player/Operator that consumes the exported game
+package (<Game>.json + media/).
+
+The export format version is still 0.2.0 - no breaking format change, and
+NO new export fields in this handover. The only change below UPDATES THE
+VISUAL SPEC of the team-photo caption bar that was described in v3 section 3.
+If you already implemented the v3 caption bar, you need to change its
+appearance to match this document.
+
+Legend: BIG = new subsystem or significant logic. SMALL = a field read or
+a minor behaviour tweak.
+
+
+1. TEAM-PHOTO CAPTION BAR - APPEARANCE UPDATED - SMALL
+-----------------------------------------------------
+
+This SUPERSEDES v3 section 3 (show_photo_caption as a general Stage field).
+The field, the trigger condition, and the bar position are unchanged - only
+the COLOURS, LAYOUT, FONT, and SIZING of the caption bar have changed.
+
+What is unchanged from v3:
+
+  - Stage.show_photo_caption (bool, default false) still controls the caption.
+  - The caption bar still sits INSIDE the team photo's bottom edge (not below
+    it), on any stage where show_team_photo AND show_photo_caption are both
+    true.
+  - The caption is still a single line (no wrapping).
+
+What has changed - the caption bar appearance:
+
+  The caption bar is no longer a dark translucent bar with white text. It is
+  now a LIGHT bar with DARK GREY text, styled to match the Cunard newsletter
+  V3 body copy (the same look as the "Guests aboard Queen Mary 2" body text in
+  the newsletter background image):
+
+    Property        Old (v3)                    New (v4)
+    --------------  --------------------------  --------------------------------
+    Bar background  dark translucent            light rgba(245,245,245,0.92)
+                    rgba(0,0,0,0.7)
+    Text colour     white #ffffff               dark grey #212121
+    Items           2 - team name (left),       3 - team name (left), time
+                    time + score (right)         (centre), score (right)
+    Spacing         two ends only               three items spread across the
+                                                bar with visible gaps between
+                                                them
+    Font            (unspecified)               the stage's
+                                                title_text_font_family (e.g.
+                                                Arial for the newsletter stage)
+    Sizing          shrink-to-fit to fill the   fixed body-copy size; only
+                    photo width                 shrinks if a very long team
+                                                name would overflow
+
+Layout - three items, spread across the bar:
+
+  The bar is a single horizontal row, full width of the photo, with the three
+  items distributed across it (equivalent to CSS justify-content:
+  space-between):
+
+    | Team Name          00:12          Score: 42 |
+
+  - LEFT: the team name (falls back to "Team" if empty).
+  - CENTRE: the elapsed timer time (same format the timer already uses).
+  - RIGHT: "Score: <current score>".
+
+  Each item is bold, single-line (no wrap), dark grey #212121 on the light
+  rgba(245,245,245,0.92) bar.
+
+Font:
+
+  Use the stage's title_text_font_family field (already exported on every
+  Stage). For the newsletter stage this is set to "Arial". If the field is
+  absent or empty, fall back to "sans-serif". This is the same font field the
+  stage title already uses - no new field.
+
+Sizing:
+
+  - Newsletter V3 placement (the stage whose background_image_url matches the
+    SPECTRUM_Cunard_News_Unity_Background_V3.png asset): the caption font is a
+    FIXED body-copy size - approximately 30px in the 1920-wide design space
+    (i.e. designWidth / 64, where designWidth is the scaled newsletter art
+    width on screen). This matches the newsletter's body text size so longer
+    team names fit and the three items have clear space between them.
+  - The font ONLY SHRINKS if the three items together would overflow the bar
+    width (e.g. an unusually long team name). It does NOT grow to fill the bar
+    - the body-copy size is the target.
+  - Non-newsletter stages with show_team_photo + show_photo_caption: use the
+    same light-bar / dark-grey / three-item appearance. Size to a readable
+    body-copy proportion of the photo width (the web app uses roughly
+    photoWidth / 30 as the starting size, shrinking only on overflow).
+
+Behaviour requirements for Unity:
+
+  1. When show_team_photo AND show_photo_caption are both true, render the
+     caption bar over the team photo's bottom edge.
+  2. Bar background rgba(245,245,245,0.92); all text #212121, bold.
+  3. Three items spread across the bar: team name (left), time (centre),
+     "Score: <score>" (right).
+  4. Font = the stage's title_text_font_family (fall back "sans-serif").
+  5. For the newsletter V3 placement, target a fixed body-copy size (~30px in
+     the 1920 design space); shrink only if the three items overflow.
+  6. The Newsletter V3 photo placement itself (v2 section 12) is otherwise
+     unchanged - only the caption bar appearance is updated here.
+
+SMALL - the caption bar is the same boolean-triggered overlay as in v3; only
+its colours, three-item layout, font, and fixed body-copy sizing change.
+
+
+2. DOES NOT AFFECT UNITY (NO ACTION NEEDED)
+-------------------------------------------
+
+These items from v3 section 6 are reaffirmed as web-only - no export change
+and no new Unity work:
+
+  - NewsletterPhotoBackground / TeamPhotoDisplay rendering - web-renderer
+    only. The caption bar APPEARANCE is covered in section 1 above; the export
+    contract (show_photo_caption, title_text_font_family) is unchanged.
+
+
+SUMMARY TABLE
+=============
+
+  #   Feature                                                    Size   Export?
+  --  ---------------------------------------------------------  -----  -------
+  1   Team-photo caption bar appearance (light bar, dark grey     SMALL  No (visual spec
+      Arial, 3 items, body-copy size) - supersedes v3 sec 3              only; fields
+                                                                          already exported)
+  2   Web-renderer changes                                         -     No
+
+
+VERIFICATION CHECKLIST FOR REN (BUILD 4)
+========================================
+
+  1. The team-photo caption bar (when show_team_photo + show_photo_caption are
+     true) is now a LIGHT bar rgba(245,245,245,0.92) with DARK GREY #212121
+     bold text - NOT the dark bar / white text from v3.
+  2. The bar shows THREE items spread across it: team name (left), elapsed
+     time (centre), "Score: <score>" (right).
+  3. Font is the stage's title_text_font_family (Arial for the newsletter
+     stage; fall back "sans-serif").
+  4. For the newsletter V3 placement the caption uses a fixed body-copy size
+     (~30px in the 1920 design space), shrinking only if a long team name
+     overflows - it no longer auto-fills the whole photo width.
+  5. Everything else from the v3 handover still applies unchanged.
